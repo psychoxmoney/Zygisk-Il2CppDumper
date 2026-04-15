@@ -1,27 +1,42 @@
 name: Build
 on:
   workflow_dispatch:
-      inputs:
-        package_name:
-          description: "Package name of the game:"
-          required: true
+    inputs:
+      package_name:
+        description: "Package name of the game (e.g., com.pubg.imobile)"
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-java@v3
+    - uses: actions/checkout@v4 # Updated to v4
+
+    - name: set up JDK 17
+      uses: actions/setup-java@v4
       with:
-        distribution: temurin
-        java-version: 11
+        java-version: '17' # Java 17 behtar hai naye projects ke liye
+        distribution: 'temurin'
         cache: gradle
-    - run: |
-        chmod +x ./gradlew
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Update Game Package Name
+      run: |
+        # module.gradle mein description update karne ke liye
         sed -i 's/moduleDescription = "/moduleDescription = "(${{ github.event.inputs.package_name }}) /g' module.gradle
+        
+        # game.h mein package name replace karne ke liye
+        # Note: Agar ye step fail ho, toh check karein ki game.h ka path sahi hai ya nahi
         sed -i "s/com.game.packagename/${{ github.event.inputs.package_name }}/g" module/src/main/cpp/game.h
-        ./gradlew :module:assembleRelease
-    - uses: actions/upload-artifact@v3
+
+    - name: Build with Gradle
+      run: ./gradlew :module:assembleRelease
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4 # Updated to v4
       with:
-        name: zygisk-il2cppdumper
-        path: out/magisk_module_release/
+        name: zygisk-il2cppdumper-${{ github.event.inputs.package_name }}
+        path: out/*  # Isse 'out' folder ke andar ka saare zip files mil jayenge
+        
